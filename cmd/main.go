@@ -4,8 +4,10 @@ package main
 // Define the fmt import for formatting
 import (
 	"fmt"
+	"github.com/cloud-hosted-twitter-bot-workshop/pkg/twitter_auth"
 	"net/http"
 	"io/ioutil"
+	"os"
 
 	// You can prefix imports to make it easier to reference them in your code, like this one
 	logr "github.com/sirupsen/logrus"
@@ -18,21 +20,11 @@ func main() {
 	// Create the first route handler listening on '/'
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/showjoke", jokeHandler)
+	http.HandleFunc("/tweetjoke", TweetHandler)
 	logr.Info("Starting up on 8080")
 
 	// Start the sever
 	http.ListenAndServe(":8080", nil)
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	// Assign a variable with a string
-	name := "Gerard"
-
-	// Logs a message to the terminal using the 3rd party import logrus
-	logr.Info("Received request for the home page")
-
-	// Write the response to the byte array - Sprintf formats and returns a string without printing it anywhere
-	w.Write([]byte(fmt.Sprintf("Hello, %s\n", name)))
 }
 
 func getJoke() (string, error) {
@@ -70,6 +62,19 @@ func getJoke() (string, error) {
 	return string(body), nil
 }
 
+// HANDLERS
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	// Assign a variable with a string
+	name := "Gerard"
+
+	// Logs a message to the terminal using the 3rd party import logrus
+	logr.Info("Received request for the home page")
+
+	// Write the response to the byte array - Sprintf formats and returns a string without printing it anywhere
+	w.Write([]byte(fmt.Sprintf("Hello, %s\n", name)))
+}
+
 func jokeHandler(w http.ResponseWriter, r *http.Request) {
 	// Write the status code 200
 	w.WriteHeader(http.StatusOK)
@@ -88,4 +93,34 @@ func jokeHandler(w http.ResponseWriter, r *http.Request) {
 	// Write the response to the byte array - Sprintf formats and returns a string without printing it anywhere
 	w.Write([]byte(fmt.Sprintf(dadJoke)))
 	logr.Info(dadJoke)
+}
+
+// TweetHandler executes logic to tweet a joke
+func TweetHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	dadJoke, err := getJoke()
+	if err != nil {
+		logr.Error(err)
+		os.Exit(1)
+	}
+	w.Write([]byte(fmt.Sprintf("The following joke will be tweeted, %s\n", dadJoke)))
+
+	// Get twitter credentials from the twitter_auth package
+	creds := twitter_auth.GetCredentials()
+
+	// Build client
+	client, err := twitter_auth.GetUserClient(&creds)
+	if err != nil {
+		logr.Error("Error getting Twitter Client")
+		logr.Error(err)
+	}
+
+	// Tweet the joke by calling the function within client
+	tweet, resp, err := client.Statuses.Update(dadJoke, nil)
+	if err != nil {
+		logr.Error(err)
+	}
+
+	logr.Infof("%+v\n", resp)
+	logr.Infof("%+v\n", tweet)
 }
