@@ -16,3 +16,6 @@
 
 # System files
 .DS_Store
+
+# IDEA folder
+.idea/
